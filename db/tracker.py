@@ -15,6 +15,12 @@ def _conn() -> sqlite3.Connection:
     return conn
 
 
+def _add_column_if_missing(conn, table: str, column: str, coltype: str):
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+
+
 def init_db():
     with _conn() as conn:
         conn.executescript("""
@@ -49,6 +55,10 @@ def init_db():
             updated_at      TEXT DEFAULT (datetime('now'))
         );
         """)
+        # Idempotent migrations for columns added after the initial release —
+        # existing jobs.db files must not break.
+        _add_column_if_missing(conn, "jobs", "sponsor_licensed", "INTEGER")
+        _add_column_if_missing(conn, "jobs", "sponsor_note", "TEXT")
 
 
 def upsert_job(job: Job):
@@ -56,12 +66,15 @@ def upsert_job(job: Job):
         conn.execute("""
         INSERT OR REPLACE INTO jobs
             (id, title, company, location, salary, url, source, remote,
-             description, posted_date, match_score, match_reason, visa_note, fetched_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             description, posted_date, match_score, match_reason, visa_note,
+             sponsor_licensed, sponsor_note, fetched_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (job.id, job.title, job.company, job.location, job.salary,
               job.url, job.source, int(job.remote), job.description,
               job.posted_date, job.match_score, job.match_reason,
-              job.visa_note, job.fetched_at))
+              job.visa_note,
+              None if job.sponsor_licensed is None else int(job.sponsor_licensed),
+              job.sponsor_note, job.fetched_at))
 
 
 def get_all_jobs(min_score: float = 0.0) -> list:

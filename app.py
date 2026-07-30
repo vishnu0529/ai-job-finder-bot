@@ -29,6 +29,7 @@ from db.tracker import (init_db, upsert_job, get_all_jobs, get_job,
 from searchers.base import Job
 from searchers import remotive, arbeitnow, linkedin
 from agents import scorer, writer
+from sponsor import register as sponsor_register
 
 # ── page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -105,22 +106,36 @@ def status_pill(status: str) -> str:
             f'{emoji} {status.capitalize()}</span>')
 
 
+def sponsor_badge(sponsor_licensed) -> str:
+    """sponsor_licensed is 1/0/None from SQLite (see db/tracker.py)."""
+    if sponsor_licensed == 1:
+        return '<span class="status-pill" style="background:#16653422;color:#16a34a;">🛂 Sponsor-licensed</span>'
+    if sponsor_licensed == 0:
+        return '<span class="status-pill" style="background:#7c2d1222;color:#dc2626;">🛂 Not on register</span>'
+    return ""
+
+
 def render_job_card(job: dict, show_status: bool = False):
     score = job.get("match_score", 0) or 0
     status = job.get("status")
     remote_tag = '<span class="status-pill tag-remote">🌐 Remote</span>' if job.get("remote") else ""
     status_tag = status_pill(status) if show_status and status else ""
     salary_tag = f"<small>💷 {job['salary']}</small>  " if job.get("salary") else ""
+    sponsor_tag = sponsor_badge(job.get("sponsor_licensed"))
     st.markdown(f"""
     <div class="job-card">
       <b style="font-size:15px;">{job['title']}</b>
       &nbsp;&nbsp;{score_badge(score)}
-      &nbsp;{remote_tag}&nbsp;{status_tag}<br>
+      &nbsp;{remote_tag}&nbsp;{status_tag}&nbsp;{sponsor_tag}<br>
       <span style="color:#aaa;">🏢 {job['company']} &nbsp;·&nbsp; 📍 {job['location']}</span><br>
       {salary_tag}<small style="color:#888;">🔗 {job['source'].capitalize()} &nbsp;·&nbsp;
       {"📅 " + job['posted_date'] if job.get('posted_date') else ""}</small>
     </div>
     """, unsafe_allow_html=True)
+    if job.get("sponsor_note"):
+        st.caption(f"🛂 {job['sponsor_note']}")
+    if job.get("visa_note") and job["visa_note"] != "unclear":
+        st.caption(f"🤖 AI visa read: {job['visa_note']}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -258,6 +273,24 @@ with tab_search:
                 all_jobs.sort(key=lambda j: j.match_score, reverse=True)
                 score_bar.empty()
 
+            # Real UK sponsor-register check (not an LLM guess — see sponsor/register.py)
+            st.info("🛂 Checking companies against the UK sponsor register…")
+            sponsor_bar = st.progress(0)
+            for i, job in enumerate(all_jobs):
+                try:
+                    result = sponsor_register.check_company(job.company)
+                    job.sponsor_licensed = result.licensed
+                    job.sponsor_note = (
+                        f"Licensed as '{result.matched_name}' ({', '.join(result.routes)})"
+                        if result.licensed
+                        else "Not found on register under this name — verify manually"
+                    )
+                except Exception as e:
+                    job.sponsor_licensed = None
+                    job.sponsor_note = f"Could not check register: {e}"
+                sponsor_bar.progress((i + 1) / len(all_jobs))
+            sponsor_bar.empty()
+
             # Save to DB
             for job in all_jobs:
                 upsert_job(job)
@@ -279,7 +312,7 @@ with tab_jobs:
 
     col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
     with col1:
-        filter_source = st.selectbox("Source", ["All", "linkedin", "remotive", "arbeitnow", "reed"])
+        filter_source = st.selectbox("Source", ["All", "linkedin", "remotive", "arbeitnow", "reed", "adzuna"])
     with col2:
         filter_status = st.selectbox("Status", ["All", "new", "saved", "applied", "interview", "offer", "rejected"])
     with col3:
@@ -288,12 +321,18 @@ with tab_jobs:
         st.markdown("<br>", unsafe_allow_html=True)
         refresh = st.button("🔄 Refresh")
 
+    sponsor_only = st.checkbox(
+        "🛂 Sponsor-licensed only (real UK Home Office register check)"
+    )
+
     all_db_jobs = get_all_jobs(min_score=min_score_filter)
 
     if filter_source != "All":
         all_db_jobs = [j for j in all_db_jobs if j["source"] == filter_source]
     if filter_status != "All":
         all_db_jobs = [j for j in all_db_jobs if j.get("status") == filter_status]
+    if sponsor_only:
+        all_db_jobs = [j for j in all_db_jobs if j.get("sponsor_licensed") == 1]
 
     st.markdown(f"**{len(all_db_jobs)} jobs** matching filters")
 
