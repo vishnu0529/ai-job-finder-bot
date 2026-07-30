@@ -30,6 +30,7 @@ from searchers.base import Job
 from searchers import remotive, arbeitnow, linkedin
 from agents import scorer, writer
 from sponsor import register as sponsor_register
+from utils import pdf_export
 
 # ── page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -462,6 +463,16 @@ with tab_apply:
                     if st.button("💾 Save edits"):
                         save_application(selected_id, cover_letter=edited_cl)
                         st.success("Saved!")
+
+                    pdf_bytes = pdf_export.cover_letter_to_pdf(
+                        CANDIDATE, job_data["title"], job_data["company"], edited_cl
+                    )
+                    st.download_button(
+                        "📄 Download as PDF",
+                        data=pdf_bytes,
+                        file_name=f"cover_letter_{job_data['company']}_{job_data['title']}.pdf".replace(" ", "_"),
+                        mime="application/pdf",
+                    )
 
             # ── CV / ATS Notes ────────────────────────────────────────────────
             with col_b:
