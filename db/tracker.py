@@ -54,6 +54,11 @@ def init_db():
             created_at      TEXT DEFAULT (datetime('now')),
             updated_at      TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        );
         """)
         # Idempotent migrations for columns added after the initial release —
         # existing jobs.db files must not break.
@@ -141,6 +146,29 @@ def mark_followed_up(job_id: str):
             "UPDATE applications SET follow_up_date=?, updated_at=? WHERE job_id=?",
             (now, now, job_id),
         )
+
+
+def get_meta(key: str) -> Optional[str]:
+    with _conn() as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_meta(key: str, value: str):
+    with _conn() as conn:
+        conn.execute("""
+        INSERT INTO meta (key, value) VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value
+        """, (key, value))
+
+
+def count_new_high_score_jobs(since_iso: str, min_score: float = 8.0) -> int:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) as n FROM jobs WHERE fetched_at > ? AND match_score >= ?",
+            (since_iso, min_score),
+        ).fetchone()
+    return row["n"]
 
 
 def get_stats() -> dict:

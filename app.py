@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import CANDIDATE, SOURCES
 from db.tracker import (init_db, upsert_job, get_all_jobs, get_job,
                         get_application, save_application, update_status, get_stats,
-                        mark_followed_up)
+                        mark_followed_up, get_meta, set_meta, count_new_high_score_jobs)
 from searchers.base import Job
 from searchers import remotive, arbeitnow, linkedin
 from agents import scorer, writer
@@ -624,6 +624,16 @@ with tab_tracker:
 # ──────────────────────────────────────────────────────────────────────────────
 with tab_dash:
     st.markdown("## 📊 Dashboard")
+
+    _last_visit = get_meta("last_dashboard_visit")
+    if _last_visit:
+        _new_high_score = count_new_high_score_jobs(_last_visit, min_score=8.0)
+        if _new_high_score > 0:
+            st.success(
+                f"🔔 {_new_high_score} new job(s) scored 8+/10 since your last visit "
+                f"({_last_visit[:10]})"
+            )
+    set_meta("last_dashboard_visit", datetime.utcnow().isoformat())
 
     stats = get_stats()
     all_scored = [j for j in get_all_jobs() if j.get("match_score", 0) >= 7]
