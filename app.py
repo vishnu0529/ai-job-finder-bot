@@ -208,6 +208,8 @@ with tab_search:
     sources_enabled = ["LinkedIn", "Remotive", "Arbeitnow"]
     if SOURCES["reed"]["enabled"]:
         sources_enabled.append("Reed")
+    if SOURCES["adzuna"]["enabled"]:
+        sources_enabled.append("Adzuna")
 
     selected_sources = st.multiselect("Sources", sources_enabled, default=sources_enabled)
     score_jobs_toggle = st.toggle("AI-score each job (uses Gemini API — slower but ranks results)", value=True)
@@ -249,7 +251,16 @@ with tab_search:
             rj2 = reed.search(SOURCES["reed"]["key"], keywords, loc_str, limit)
             all_jobs.extend(rj2)
             step += 1
-            progress.progress(1.0, text=f"Reed: {len(rj2)} jobs found")
+            progress.progress(step / total_steps, text=f"Reed: {len(rj2)} jobs found")
+
+        if "Adzuna" in selected_sources and SOURCES["adzuna"]["enabled"]:
+            from searchers import adzuna
+            status_msg.info("📮 Searching Adzuna…")
+            loc_str = location if location not in ["Remote", "Hybrid"] else "London"
+            adj = adzuna.search(SOURCES["adzuna"]["id"], SOURCES["adzuna"]["key"], keywords, loc_str, limit)
+            all_jobs.extend(adj)
+            step += 1
+            progress.progress(1.0, text=f"Adzuna: {len(adj)} jobs found")
 
         progress.progress(1.0, text=f"✅ Found {len(all_jobs)} total jobs")
         status_msg.empty()
