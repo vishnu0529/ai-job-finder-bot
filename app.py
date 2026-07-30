@@ -31,7 +31,7 @@ from searchers.base import Job
 from searchers import remotive, arbeitnow, linkedin
 from agents import scorer, writer
 from sponsor import register as sponsor_register
-from utils import pdf_export
+from utils import pdf_export, salary
 
 # ── page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -670,6 +670,44 @@ with tab_dash:
             st.bar_chart(df2.set_index("Stage"))
         else:
             st.info("Start applying to see your funnel.")
+
+    st.divider()
+    st.markdown("### 💷 Salary Benchmarking")
+    salary_rows = []
+    all_jobs_for_salary = get_all_jobs()
+    for j in all_jobs_for_salary:
+        parsed = salary.parse_gbp_salary(j.get("salary", "") or "")
+        if parsed:
+            lo, hi = parsed
+            salary_rows.append({
+                "role": salary.match_target_role(j["title"], CANDIDATE["target_roles"]),
+                "location": j["location"] or "Unknown",
+                "avg_salary": (lo + hi) / 2,
+            })
+
+    if salary_rows:
+        import pandas as pd
+        df_salary = pd.DataFrame(salary_rows)
+        st.caption(
+            f"Based on {len(salary_rows)} of {len(all_jobs_for_salary)} jobs with a "
+            f"parseable annual GBP salary (day/hourly rates and non-GBP figures excluded)."
+        )
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            st.markdown("**By matched target role**")
+            by_role = df_salary.groupby("role")["avg_salary"].mean().sort_values(ascending=False)
+            st.bar_chart(by_role)
+        with sc2:
+            st.markdown("**By location (top 10)**")
+            by_location = (df_salary.groupby("location")["avg_salary"].mean()
+                          .sort_values(ascending=False).head(10))
+            st.bar_chart(by_location)
+    else:
+        st.info(
+            "No parseable annual GBP salary data yet. Reed and Adzuna tend to include "
+            "salary ranges more often than LinkedIn/Remotive/Arbeitnow — try searching "
+            "with those sources enabled."
+        )
 
     st.divider()
     st.markdown("### 🎯 Your Job Search Action Plan")
