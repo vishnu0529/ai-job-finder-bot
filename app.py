@@ -215,6 +215,15 @@ with tab_search:
 
     selected_sources = st.multiselect("Sources", sources_enabled, default=sources_enabled)
     score_jobs_toggle = st.toggle("AI-score each job (uses Gemini API — slower but ranks results)", value=True)
+    score_cap = 15
+    if score_jobs_toggle:
+        score_cap = st.number_input(
+            "Max jobs to AI-score per search",
+            min_value=1, max_value=100, value=15, step=1,
+            help="Caps Gemini API usage per search — the free tier's daily quota "
+                 "is easy to exhaust scoring every result. Jobs beyond this cap "
+                 "are still saved, just unscored.",
+        )
 
     if st.button("🚀 Search Jobs", type="primary", use_container_width=True):
         all_jobs: list[Job] = []
@@ -270,19 +279,28 @@ with tab_search:
         if not all_jobs:
             st.warning("No jobs found. LinkedIn may be rate-limiting — try again in a minute, or add Reed/Adzuna API keys.")
         else:
-            # AI scoring
+            # AI scoring — capped per search to conserve Gemini's free-tier
+            # daily quota (easy to exhaust scoring every result; see
+            # agents/scorer.py for why client-side pacing alone can't fix
+            # a daily cap).
             if score_jobs_toggle and os.getenv("GOOGLE_API_KEY"):
-                st.info(f"🧠 AI-scoring {len(all_jobs)} jobs against your profile…")
+                to_score = all_jobs[:score_cap]
+                to_skip = all_jobs[score_cap:]
+                st.info(f"🧠 AI-scoring {len(to_score)} of {len(all_jobs)} jobs "
+                        f"against your profile (capped at {score_cap})…")
                 score_bar = st.progress(0)
-                for i, job in enumerate(all_jobs):
+                for i, job in enumerate(to_score):
                     if job.description:
                         job.match_score, job.match_reason, job.visa_note = scorer.score_job(job)
                     else:
                         job.match_score = 5.0
                         job.match_reason = "No description available"
                         job.visa_note = "unclear"
-                    score_bar.progress((i + 1) / len(all_jobs))
-                    time.sleep(0.05)
+                    score_bar.progress((i + 1) / len(to_score))
+                for job in to_skip:
+                    job.match_score = 0.0
+                    job.match_reason = f"Not scored — over the per-search cap ({score_cap})"
+                    job.visa_note = "unclear"
                 all_jobs.sort(key=lambda j: j.match_score, reverse=True)
                 score_bar.empty()
 
