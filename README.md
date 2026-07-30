@@ -34,16 +34,19 @@ This bot collapses that entire workflow into a single dashboard. Search once, ge
 ## ✨ Features
 
 ### 🔍 Multi-Board Job Search
-Searches **LinkedIn**, **Reed.co.uk**, **Remotive**, and **Arbeitnow** in a single click — no manual tab-switching. Results are deduplicated and ranked by relevance.
+Searches **LinkedIn**, **Reed.co.uk**, **Remotive**, **Arbeitnow**, and **Adzuna** in a single click — no manual tab-switching. Results are deduplicated and ranked by relevance.
 
 ### 🧠 AI Match Scoring (Gemini 2.5 Flash)
 Every job result is scored **1–10** against your personal skill profile by Gemini 2.5 Flash. The scorer evaluates:
 - Skills alignment (how many of your skills match the JD)
 - Seniority level fit
 - Location / remote compatibility
-- Visa friendliness (critical for sponsored or visa-holder candidates)
+- Visa friendliness (the AI's guess — see the real check below)
 
 Each score comes with a one-line explanation so you know *why* a job ranked where it did.
+
+### 🛂 Real UK Sponsor-Register Checking
+Every job's company is checked against the actual **UK Home Office register of licensed sponsors** — not just an LLM guess. The register CSV is fetched from gov.uk and cached locally (refreshed weekly), then matched against a normalised company name (strips "Ltd"/"Limited"/"Group"/etc. so "Citi" correctly matches the register's "Citi Group" entry). Shows a "🛂 Sponsor-licensed" or "🛂 Not on register" badge on every job card, plus a "Sponsor-licensed only" filter on the Job Board. A "not found" result is a prompt to double-check manually, not proof a company can't sponsor.
 
 ### ✍️ Tailored Cover Letter Generator
 Click one button — get a **350–400 word cover letter** written specifically for that job and company. The generator:
@@ -51,6 +54,7 @@ Click one button — get a **350–400 word cover letter** written specifically 
 - Maps your actual projects to the job's requirements
 - Avoids every overused cover letter cliché
 - Includes your availability and visa status cleanly
+- **Download as PDF** in one click alongside the editable text version
 
 ### 🎯 ATS Keyword Analyser
 Compares the job description against your CV skills and returns:
@@ -72,11 +76,18 @@ Saved → Applied → Interview → Offer → Rejected
 
 Every application stores the cover letter, ATS notes, applied date, and custom notes. Nothing falls through the cracks.
 
+For anything marked **Applied** with no response after 7 days, a **✉️ Draft Follow-up** button appears — generates a short, polite follow-up email for you to review and send yourself (it drafts text, it never sends anything on its own).
+
 ### 📊 Dashboard
 - Application funnel chart
 - Top 10 matched jobs table
 - Jobs found by source breakdown
 - Average match score across all results
+- **Salary benchmarking**: average salary by matched target role and by location, parsed from real job-posting salary strings (day/hourly rates and non-GBP figures excluded so the chart isn't misleading — see [How salary parsing works](#-how-salary-parsing-works))
+- **New high-score jobs notification**: "N new jobs scored 8+/10 since your last visit" banner, so you don't have to remember what you last saw
+
+### ⏰ Scheduled Search (GitHub Actions → Google Sheets)
+A daily scheduled search can run headlessly via GitHub Actions and push new results straight to a Google Sheet — see [Scheduled Search Setup](#-scheduled-search-setup) below.
 
 ---
 
@@ -160,7 +171,7 @@ Tracker     →  mark Applied  →  repeat
 ```
 ai-job-finder-bot/
 │
-├── app.py                  # Streamlit UI — 5-tab dashboard (604 lines)
+├── app.py                  # Streamlit UI — 5-tab dashboard
 ├── config.py               # Candidate profile + source configuration
 │
 ├── searchers/
@@ -168,14 +179,31 @@ ai-job-finder-bot/
 │   ├── linkedin.py         # LinkedIn public job scraper (no auth required)
 │   ├── reed.py             # Reed.co.uk REST API client
 │   ├── remotive.py         # Remotive API client (remote-first jobs)
-│   └── arbeitnow.py        # Arbeitnow API client
+│   ├── arbeitnow.py        # Arbeitnow API client
+│   └── adzuna.py           # Adzuna API client
 │
 ├── agents/
 │   ├── scorer.py           # Gemini-powered job match scorer
-│   └── writer.py           # Cover letter + ATS + interview prep generator
+│   └── writer.py           # Cover letter + ATS + interview prep + follow-up generator
+│
+├── sponsor/
+│   └── register.py         # Real UK Home Office sponsor-register check (cached CSV)
+│
+├── utils/
+│   ├── pdf_export.py       # Cover letter -> PDF
+│   └── salary.py           # Salary-string parsing for benchmarking
+│
+├── integrations/
+│   └── sheets.py           # Google Sheets writer (for the scheduled search)
+│
+├── scripts/
+│   └── scheduled_search.py # Headless CLI for the GitHub Actions cron job
 │
 ├── db/
-│   └── tracker.py          # SQLite CRUD — jobs + applications tables
+│   └── tracker.py          # SQLite CRUD — jobs, applications, meta tables
+│
+├── .github/workflows/
+│   └── scheduled-search.yml # Daily cron -> scripts/scheduled_search.py
 │
 ├── .env.example            # Environment variable template
 ├── requirements.txt
@@ -230,8 +258,9 @@ The cover letter generator and job scorer both use this profile. The more specif
 | `GOOGLE_API_KEY` | ✅ Yes | [Google AI Studio](https://aistudio.google.com/apikey) | Free tier (generous) |
 | `REED_API_KEY` | ⭐ Recommended | [Reed Developer Portal](https://www.reed.co.uk/developers/jobseeker) | Free |
 | `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` | Optional | [Adzuna Developer](https://developer.adzuna.com/) | Free tier |
+| `GOOGLE_SHEETS_CREDENTIALS_JSON` + `GOOGLE_SHEET_ID` | Optional — only for the scheduled search | [Scheduled Search Setup](#-scheduled-search-setup) | Free |
 
-LinkedIn and Remotive require no API keys — they work immediately out of the box.
+LinkedIn and Remotive require no API keys — they work immediately out of the box. The sponsor-register check needs no key either — it fetches the public gov.uk register directly.
 
 ---
 
@@ -243,21 +272,57 @@ LinkedIn and Remotive require no API keys — they work immediately out of the b
 | AI / LLM | Google Gemini 2.5 Flash via `google-generativeai` |
 | HTTP | `httpx` with async-compatible sync client |
 | Scraping | `BeautifulSoup4` + `lxml` |
-| Database | SQLite via `sqlite3` (zero-config, local) |
-| Data | `pandas` for dashboard tables |
+| Database | SQLite via `sqlite3` (zero-config, local) — jobs, applications, meta tables |
+| Sponsor check | Real UK Home Office register CSV (gov.uk), cached locally |
+| PDF export | `fpdf2` |
+| Sheets sync | `gspread` + `google-auth` (service account) |
+| Data | `pandas` for dashboard tables and salary aggregation |
 | Config | `python-dotenv` |
-| Job sources | LinkedIn (public), Reed API, Remotive API, Arbeitnow API |
+| Job sources | LinkedIn (public), Reed API, Remotive API, Arbeitnow API, Adzuna API |
+| Scheduling | GitHub Actions (daily cron + manual dispatch) |
+
+---
+
+## 💷 How Salary Parsing Works
+
+Job postings' salary fields are free text and inconsistent across sources —
+this project's own data includes GBP annual ranges (`£45,000–£60,000`), GBP
+day/contract rates (`£400–£450`), and USD figures (`$80k - $100k`). Averaging
+all of these together would produce a misleading benchmark, so
+`utils/salary.py` only accepts GBP figures above a plausible annual-salary
+floor (day rates get excluded, not silently averaged in) — the Dashboard
+always shows "based on N of M jobs with parseable data" rather than
+presenting a chart as more complete than it is.
+
+---
+
+## ⏰ Scheduled Search Setup
+
+To enable the daily GitHub Actions search that pushes results to a Google Sheet:
+
+1. **Create a Google Cloud service account**: [console.cloud.google.com](https://console.cloud.google.com) → IAM & Admin → Service Accounts → Create. Enable the **Google Sheets API** for the project.
+2. **Download the service account's JSON key** (Keys → Add Key → JSON).
+3. **Create a Google Sheet** (or use an existing one) and **share it** with the service account's email (found in the JSON key, field `client_email`) — Editor access.
+4. **Copy the Sheet ID** from its URL: `https://docs.google.com/spreadsheets/d/`**`SHEET_ID`**`/edit`.
+5. **Add GitHub repo secrets** (Settings → Secrets and variables → Actions → New repository secret):
+   - `GOOGLE_API_KEY`, `REED_API_KEY`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` (same values as your local `.env`)
+   - `GOOGLE_SHEETS_CREDENTIALS_JSON` — paste the **entire contents** of the service account JSON file
+   - `GOOGLE_SHEET_ID` — the ID from step 4
+6. The workflow (`.github/workflows/scheduled-search.yml`) runs daily at 07:00 UTC, or trigger it manually from the Actions tab (`workflow_dispatch`).
+
+> **Note:** this was built and its logic verified locally (dedup against a mocked worksheet, script imports cleanly), but the actual live Google Sheets API call has not been run end-to-end — that requires a real service account and sheet, which are account-specific setup only you can complete via steps 1–5 above.
 
 ---
 
 ## 🗺 Roadmap
 
-- [ ] Email alert when new high-score jobs are found
-- [ ] Adzuna API integration (additional UK job source)
-- [ ] PDF export of cover letters
-- [ ] Follow-up email drafter (for applications with no response after 7 days)
-- [ ] GitHub Actions scheduled search (run daily, push results to a Google Sheet)
-- [ ] Salary benchmarking chart by role and location
+- [x] Real UK sponsor-register checking (not in the original roadmap — added after identifying the AI-only visa guess was never actually verified against the real government register)
+- [x] ~~Email alert when new high-score jobs are found~~ → built as an **in-app notification** instead (see Dashboard section) — real outbound email sending would need SMTP credentials and a standing automated behaviour, which wasn't something to add without more deliberate, separate confirmation
+- [x] Adzuna API integration (additional UK job source)
+- [x] PDF export of cover letters
+- [x] Follow-up email drafter (for applications with no response after 7 days) — drafts text for you to send yourself, doesn't send anything automatically
+- [x] GitHub Actions scheduled search (run daily, push results to a Google Sheet) — see [Scheduled Search Setup](#-scheduled-search-setup); logic verified locally, live Sheets API call needs your own service account
+- [x] Salary benchmarking chart by role and location
 
 ---
 
