@@ -72,6 +72,20 @@ Respond with ONLY valid JSON:
 }}
 """
 
+FOLLOW_UP_PROMPT = """
+You are an expert career coach writing a brief follow-up email on behalf of {name}.
+
+They applied to the {title} role at {company} on {applied_date} and have not
+heard back since. Write a short, polite follow-up email (under 120 words) that:
+1. References the specific role and the original application date
+2. Briefly reaffirms interest without repeating the whole cover letter
+3. Asks politely whether there's any update on the hiring timeline
+4. Is warm but not pushy or apologetic
+
+Return ONLY the email text (including a short subject line as the first line,
+prefixed "Subject: "), no preamble.
+"""
+
 INTERVIEW_PREP_PROMPT = """
 You are an expert AI interview coach.
 
@@ -128,6 +142,19 @@ def generate_cv_notes(title: str, company: str, description: str) -> dict:
         return json.loads(text.strip())
     except Exception:
         return {}
+
+
+def generate_follow_up_email(title: str, company: str, applied_date: str) -> str:
+    prompt = FOLLOW_UP_PROMPT.format(
+        name=CANDIDATE["name"],
+        title=title,
+        company=company,
+        applied_date=applied_date,
+    )
+    try:
+        return _get_model().generate_content(prompt).text.strip()
+    except Exception as e:
+        return f"Error generating follow-up email: {e}"
 
 
 def generate_interview_prep(title: str, company: str, description: str) -> list[dict]:

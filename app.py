@@ -25,7 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import CANDIDATE, SOURCES
 from db.tracker import (init_db, upsert_job, get_all_jobs, get_job,
-                        get_application, save_application, update_status, get_stats)
+                        get_application, save_application, update_status, get_stats,
+                        mark_followed_up)
 from searchers.base import Job
 from searchers import remotive, arbeitnow, linkedin
 from agents import scorer, writer
@@ -574,6 +575,32 @@ with tab_tracker:
                         if app.get("cover_letter"):
                             with st.expander("View cover letter"):
                                 st.text(app["cover_letter"])
+
+                    # Follow-up drafter: applied >7 days ago, no follow-up sent yet.
+                    # Drafts text for you to copy and send yourself — does not send anything.
+                    if (status_key == "applied" and app and app.get("applied_date")
+                            and not app.get("follow_up_date")):
+                        applied_dt = datetime.fromisoformat(app["applied_date"])
+                        days_since = (datetime.utcnow() - applied_dt).days
+                        if days_since >= 7:
+                            st.warning(f"⏰ Applied {days_since} days ago with no follow-up sent yet.")
+                            if st.button("✉️ Draft Follow-up", key=f"draft_followup_{job['id']}"):
+                                with st.spinner("Drafting follow-up email…"):
+                                    followup_text = writer.generate_follow_up_email(
+                                        title=job["title"],
+                                        company=job["company"],
+                                        applied_date=app["applied_date"][:10],
+                                    )
+                                st.session_state[f"followup_text_{job['id']}"] = followup_text
+
+                            draft = st.session_state.get(f"followup_text_{job['id']}")
+                            if draft:
+                                st.text_area("Edit before sending yourself:", value=draft,
+                                            height=200, key=f"followup_edit_{job['id']}")
+                                if st.button("✅ Mark as followed up", key=f"mark_followup_{job['id']}"):
+                                    mark_followed_up(job["id"])
+                                    st.success("Marked — won't be prompted again for this application.")
+                                    st.rerun()
 
                     col1, col2 = st.columns(2)
                     with col1:

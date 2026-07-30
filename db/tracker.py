@@ -134,6 +134,15 @@ def update_status(job_id: str, status: str, notes: str = ""):
         """, (status, notes, now, applied_date, job_id))
 
 
+def mark_followed_up(job_id: str):
+    now = datetime.utcnow().isoformat()
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE applications SET follow_up_date=?, updated_at=? WHERE job_id=?",
+            (now, now, job_id),
+        )
+
+
 def get_stats() -> dict:
     with _conn() as conn:
         total_jobs   = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
