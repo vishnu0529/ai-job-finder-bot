@@ -27,6 +27,12 @@ from integrations import sheets  # noqa: E402
 from searchers import adzuna, arbeitnow, linkedin, reed, remotive  # noqa: E402
 from sponsor import register as sponsor_register  # noqa: E402
 
+# Gemini scoring is throttled to ~18-36s/job (see agents/scorer.py) to stay
+# under the free-tier rate limit. A run with 100+ jobs with descriptions can
+# take 30+ minutes and burn the daily quota just to fail on an unrelated
+# later step. Cap it the same way the interactive app does.
+SCORE_CAP = 15
+
 
 def main() -> None:
     keywords = " OR ".join(CANDIDATE["target_roles"][:3])
@@ -50,9 +56,16 @@ def main() -> None:
     print(f"Found {len(all_jobs)} jobs total")
 
     if os.getenv("GOOGLE_API_KEY"):
-        for job in all_jobs:
+        to_score = all_jobs[:SCORE_CAP]
+        to_skip = all_jobs[SCORE_CAP:]
+        print(f"AI-scoring {len(to_score)} of {len(all_jobs)} jobs (capped at {SCORE_CAP})")
+        for job in to_score:
             if job.description:
                 job.match_score, job.match_reason, job.visa_note = scorer.score_job(job)
+        for job in to_skip:
+            job.match_score = 0.0
+            job.match_reason = f"Not scored — over the per-run cap ({SCORE_CAP})"
+            job.visa_note = "unclear"
     else:
         print("GOOGLE_API_KEY not set - skipping AI scoring")
 
