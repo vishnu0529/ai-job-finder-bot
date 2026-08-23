@@ -17,7 +17,7 @@ def search(keywords: str = "ai engineer", limit: int = 40) -> list:
         return []
 
     jobs = []
-    for item in data:
+    for item in data[:limit]:
         jid = f"remotive_{item.get('id', '')}"
         tags = " · ".join(item.get("tags", []))
         jobs.append(Job(
