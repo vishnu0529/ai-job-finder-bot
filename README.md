@@ -87,7 +87,7 @@ For anything marked **Applied** with no response after 7 days, a **✉️ Draft 
 - **New high-score jobs notification**: "N new jobs scored 8+/10 since your last visit" banner, so you don't have to remember what you last saw
 
 ### ⏰ Scheduled Search (GitHub Actions → Google Sheets)
-A daily scheduled search can run headlessly via GitHub Actions and push new results straight to a Google Sheet, see [Scheduled Search Setup](#-scheduled-search-setup) below.
+A headless search can run on demand via GitHub Actions (Actions tab → Run workflow) and push new results straight to a Google Sheet, see [Scheduled Search Setup](#-scheduled-search-setup) below.
 
 ---
 
@@ -203,7 +203,7 @@ ai-job-finder-bot/
 │   └── tracker.py          # SQLite CRUD, jobs, applications, meta tables
 │
 ├── .github/workflows/
-│   └── scheduled-search.yml # Daily cron -> scripts/scheduled_search.py
+│   └── scheduled-search.yml # Manual trigger -> scripts/scheduled_search.py
 │
 ├── .env.example            # Environment variable template
 ├── requirements.txt
@@ -307,7 +307,7 @@ To enable the daily GitHub Actions search that pushes results to a Google Sheet:
    - `GOOGLE_API_KEY`, `REED_API_KEY`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` (same values as your local `.env`)
    - `GOOGLE_SHEETS_CREDENTIALS_JSON`, paste the **entire contents** of the service account JSON file
    - `GOOGLE_SHEET_ID`, the ID from step 4
-6. The workflow (`.github/workflows/scheduled-search.yml`) runs daily at 07:00 UTC, or trigger it manually from the Actions tab (`workflow_dispatch`).
+6. The workflow (`.github/workflows/scheduled-search.yml`) runs on demand — trigger it from the Actions tab (`workflow_dispatch`).
 
 > **Note:** this was built and its logic verified locally (dedup against a mocked worksheet, script imports cleanly), but the actual live Google Sheets API call has not been run end-to-end, that requires a real service account and sheet, which are account-specific setup only you can complete via steps 1–5 above.
 
@@ -320,7 +320,7 @@ To enable the daily GitHub Actions search that pushes results to a Google Sheet:
 - [x] Adzuna API integration (additional UK job source)
 - [x] PDF export of cover letters
 - [x] Follow-up email drafter (for applications with no response after 7 days), drafts text for you to send yourself, doesn't send anything automatically
-- [x] GitHub Actions scheduled search (run daily, push results to a Google Sheet), see [Scheduled Search Setup](#-scheduled-search-setup); logic verified locally, live Sheets API call needs your own service account
+- [x] GitHub Actions on-demand search (manual trigger, push results to a Google Sheet), see [Scheduled Search Setup](#-scheduled-search-setup); logic verified locally, live Sheets API call needs your own service account
 - [x] Salary benchmarking chart by role and location
 
 ---
