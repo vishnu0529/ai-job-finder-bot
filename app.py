@@ -30,6 +30,7 @@ from db.tracker import (init_db, upsert_job, get_all_jobs, get_job,
 from searchers.base import Job
 from searchers import remotive, arbeitnow, linkedin
 from agents import scorer, writer
+from agents.graph import get_last_run, run_application_graph
 from sponsor import register as sponsor_register
 from utils import pdf_export, salary
 
@@ -458,21 +459,37 @@ with tab_apply:
                 else:
                     cover_letter = ""
 
+                prior_run = get_last_run(str(selected_id))
+                if prior_run and prior_run.get("cover_letter"):
+                    st.caption(
+                        f"🧠 Recalled from a previous run: critic score "
+                        f"{prior_run.get('critic_score', '?')}/10 after "
+                        f"{prior_run.get('revision_count', 1)} draft(s)."
+                    )
+
                 if st.button("⚡ Generate Cover Letter", type="primary"):
-                    with st.spinner("Gemini is writing your cover letter…"):
+                    with st.spinner("Running the application graph (score → sponsor check → recall similar → write → critique)…"):
                         desc = job_data.get("description", "") or ""
                         if not desc and job_data.get("url"):
                             # Try fetching description from LinkedIn
                             if "linkedin" in job_data.get("source", ""):
                                 desc = linkedin.fetch_description(job_data["url"])
-                        cover_letter = writer.generate_cover_letter(
+                        result = run_application_graph(
+                            job_id=str(selected_id),
                             title=job_data["title"],
                             company=job_data["company"],
                             location=job_data["location"],
                             description=desc,
                         )
+                        cover_letter = result["cover_letter"]
                         save_application(selected_id, cover_letter=cover_letter, status="saved")
-                        st.success("Cover letter saved!")
+                        st.success(
+                            f"Cover letter saved — critic score "
+                            f"{result.get('critic_score', '?')}/10 after "
+                            f"{result.get('revision_count', 1)} draft(s)."
+                        )
+                        if result.get("critic_feedback") and result.get("critic_feedback") != "none":
+                            st.caption(f"💬 Final reviewer note: {result['critic_feedback']}")
 
                 if cover_letter:
                     edited_cl = st.text_area("Edit before copying:", value=cover_letter, height=400)

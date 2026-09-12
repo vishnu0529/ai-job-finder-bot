@@ -143,26 +143,42 @@ Tracker     →  mark Applied  →  repeat
                            │
           ┌────────────────┼────────────────┐
           ▼                ▼                ▼
-   ┌─────────────┐  ┌────────────┐  ┌────────────────┐
-   │  Searchers  │  │ AI Agents  │  │   DB Tracker   │
-   │             │  │            │  │                │
-   │ • LinkedIn  │  │ • Scorer   │  │ SQLite         │
-   │ • Reed API  │  │   (Gemini) │  │ jobs table     │
-   │ • Remotive  │  │ • Writer   │  │ applications   │
-   │ • Arbeitnow │  │   (Gemini) │  │ table          │
-   └──────┬──────┘  └─────┬──────┘  └────────────────┘
-          │               │
-          ▼               ▼
-   ┌─────────────┐  ┌──────────────────────────────────┐
-   │  Job(       │  │  Gemini 2.5 Flash                │
-   │   id,       │  │                                  │
-   │   title,    │  │  score_job()   → 1–10 + reason   │
-   │   company,  │  │  cover_letter()→ 350–400 words   │
-   │   desc,     │  │  cv_notes()    → ATS analysis    │
-   │   score,    │  │  interview()   → 6 questions     │
-   │   ...)      │  └──────────────────────────────────┘
-   └─────────────┘
+   ┌─────────────┐  ┌────────────────┐  ┌────────────────┐
+   │  Searchers  │  │  Application    │  │   DB Tracker   │
+   │             │  │  graph          │  │                │
+   │ • LinkedIn  │  │  (LangGraph)    │  │ SQLite         │
+   │ • Reed API  │  │  see below      │  │ jobs table     │
+   │ • Remotive  │  │                 │  │ applications   │
+   │ • Arbeitnow │  │                 │  │ table          │
+   └─────────────┘  └────────────────┘  └────────────────┘
 ```
+
+### Application graph (`agents/graph.py`)
+
+Generating a cover letter isn't a single LLM call — it's a stateful
+LangGraph `StateGraph` with a conditional loop:
+
+```
+score_job → check_sponsor → recall_similar → write_cover_letter → critique
+                                                      ▲                 │
+                                                      └── revise ───────┘
+                                                        (critic score < 7,
+                                                         up to 2 revisions)
+```
+
+- **`score_job` / `check_sponsor`** — the existing Gemini scorer and UK
+  sponsor-register check, now graph nodes instead of standalone calls.
+- **`recall_similar`** — semantic search (FAISS + sentence-transformers)
+  over cover letters generated in *previous* sessions, so `write_cover_letter`
+  can avoid reusing the same opening hooks. This is the cross-session
+  memory piece — it reads state that outlived the graph run that created it.
+- **`write_cover_letter` / `critique`** — a hiring-manager-style critic
+  scores each draft 1–10; below 7, the graph loops back to rewrite with the
+  critic's specific feedback, capped at 2 revisions so it can't loop forever.
+- **Checkpointer** — a `SqliteSaver` persists the full graph state per job
+  (LangGraph "thread" = job ID) in `data/graph_checkpoints.db`. Reopening
+  the Apply tab for a job you've already generated a letter for reads back
+  the prior critic score and draft count without re-running anything.
 
 ---
 
@@ -184,7 +200,11 @@ ai-job-finder-bot/
 │
 ├── agents/
 │   ├── scorer.py           # Gemini-powered job match scorer
-│   └── writer.py           # Cover letter + ATS + interview prep + follow-up generator
+│   ├── writer.py           # Cover letter + ATS + interview prep + follow-up generator
+│   ├── graph_state.py      # Shared state threaded through the application graph
+│   ├── nodes.py            # Graph nodes wrapping scorer/writer/sponsor as state in/out
+│   ├── memory.py           # FAISS semantic recall over past cover letters
+│   └── graph.py            # LangGraph StateGraph: score → sponsor → recall → write → critique (loop)
 │
 ├── sponsor/
 │   └── register.py         # Real UK Home Office sponsor-register check (cached CSV)
@@ -270,6 +290,8 @@ LinkedIn and Remotive require no API keys, they work immediately out of the box.
 |---|---|
 | UI | Streamlit 1.35+ |
 | AI / LLM | Google Gemini 2.5 Flash via `google-generativeai` |
+| Orchestration | LangGraph `StateGraph` with a critic-driven revision loop, `SqliteSaver` checkpointing |
+| Memory | FAISS + `sentence-transformers` semantic recall over past cover letters |
 | HTTP | `httpx` with async-compatible sync client |
 | Scraping | `BeautifulSoup4` + `lxml` |
 | Database | SQLite via `sqlite3` (zero-config, local), jobs, applications, meta tables |
@@ -327,14 +349,15 @@ To enable the daily GitHub Actions search that pushes results to a Google Sheet:
 
 ## 🤝 Part of My AI Engineering Portfolio
 
-This project is one of four AI engineering projects I've built publicly:
+This project is one of several AI engineering projects I've built publicly:
 
 | Project | Description | Stack |
 |---|---|---|
-| **[AI Resume Matcher](https://github.com/vishnu0529/ai-resume-matcher)** | Production 4-step agentic LLM system, live on Railway | Gemini 2.5 Flash · FastAPI · Streamlit · Pydantic · CI/CD |
+| **[AI Resume Matcher](https://github.com/vishnu0529/ai-resume-matcher)** | Resume/JD matching via semantic similarity + LLM skills-gap analysis | Anthropic Claude · FastAPI · FAISS · Streamlit |
 | **[AI Job Finder Bot](https://github.com/vishnu0529/ai-job-finder-bot)** | This project | Gemini · Streamlit · Reed API · SQLite |
+| **[Enterprise RAG Assistant](https://github.com/vishnu0529/enterprise-rag-assistant)** | Production-style RAG with cited chat + faithfulness/relevancy/precision/recall eval | LangChain · Qdrant · FastAPI |
 | **[Employee Sentiment Analysis](https://github.com/vishnu0529/Employee-Sentiment-Analysis)** | End-to-end NLP pipeline on 2,200 employee emails | BERT · VADER · scikit-learn · pandas |
-| **[Sports AI API](https://github.com/vishnu0529/sports-ai-api)** | Multi-agent RAG system with natural language sports queries | LangChain · LangGraph · FastAPI · FAISS |
+| **[Sports AI Prediction API](https://github.com/vishnu0529/sports-ai-api)** | Natural-language sports match predictions | OpenAI · FastAPI |
 
 ---
 

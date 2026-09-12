@@ -10,17 +10,18 @@ CANDIDATE = {
 
     "summary": (
         "AI Engineer completing an MSc in Artificial Intelligence & Robotics at the University "
-        "of Hertfordshire (Sep 2026). Built and shipped a live production 4-step agentic LLM "
-        "system (AI Resume Matcher) using Google Gemini 2.5 Flash, FastAPI, and Railway CI/CD. "
-        "Background in enterprise digital delivery at Deloitte Digital."
+        "of Hertfordshire (Sep 2026). Built an AI Resume Matcher (FastAPI, Anthropic Claude, "
+        "FAISS semantic matching) and this AI Job Finder Bot (Gemini-powered match scoring, "
+        "cover-letter generation, real UK sponsor-register checks). Background in enterprise "
+        "digital delivery at Deloitte Digital."
     ),
 
     "skills": [
-        "Python", "FastAPI", "LangChain", "LangGraph", "RAG", "FAISS", "ChromaDB",
+        "Python", "FastAPI", "LangChain", "RAG", "FAISS", "Qdrant",
         "HuggingFace Transformers", "DistilBERT", "BERT", "PyTorch", "scikit-learn",
-        "NLP", "Prompt Engineering", "Agentic AI", "LLM Orchestration",
+        "NLP", "Prompt Engineering", "LLM Orchestration",
         "Google Gemini API", "Anthropic Claude API", "Pydantic", "Docker",
-        "GitHub Actions", "CI/CD", "Railway", "Streamlit", "pandas", "NumPy",
+        "GitHub Actions", "CI/CD", "Streamlit", "pandas", "NumPy",
         "SQL", "REST APIs", "Microservices", "Git",
     ],
 
@@ -30,10 +31,15 @@ CANDIDATE = {
     ],
 
     "projects": [
-        "AI Resume Matcher: live 4-step agentic LLM system (Gemini 2.5 Flash, FastAPI, Railway)",
-        "Agentic Sports Intelligence API: multi-agent RAG with LangGraph + FAISS",
+        "AI Resume Matcher: FastAPI service matching resumes to job descriptions using FAISS "
+        "semantic similarity + Anthropic Claude for skills-gap analysis",
+        "AI Job Finder Bot: this project — multi-source job search, Gemini-based match scoring, "
+        "automated cover letters, real UK sponsor-register checks",
+        "Sports AI Prediction API: FastAPI service using OpenAI for natural-language sports "
+        "match predictions",
         "Employee Sentiment Analysis: BERT + VADER NLP pipeline on 2,200 emails",
-        "Phishing Email Detection (MSc): Random Forest vs DistilBERT comparison (in progress)",
+        "Phishing Email Detection (MSc): Random Forest, Naive Bayes & DistilBERT comparison "
+        "with adversarial robustness testing",
     ],
 
     "target_roles": [

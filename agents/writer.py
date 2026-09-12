@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Optional
 import google.generativeai as genai
 from config import CANDIDATE
 
@@ -40,7 +41,7 @@ Description:
 
 Write a compelling, specific cover letter (350–400 words) that:
 1. Opens with a strong hook referencing THIS company/role specifically — not generic
-2. References the live AI Resume Matcher (4-step agentic pipeline, Gemini 2.5 Flash, FastAPI, Railway) as concrete evidence of production AI skills
+2. References the AI Resume Matcher (FastAPI, Anthropic Claude, FAISS semantic matching) as concrete evidence of applied AI skills
 3. Maps 2–3 SPECIFIC requirements from the job description to the candidate's specific skills/projects
 4. Mentions MSc AI & Robotics completion date (Sep 2026) and full-time availability from Oct 2026
 5. Is professional but human, not robotic
@@ -48,8 +49,25 @@ Write a compelling, specific cover letter (350–400 words) that:
 
 NEVER use these phrases: "I am writing to express my interest", "I would be a great fit",
 "passionate about", "I am excited to", "I believe I would".
-
+{avoid_openers_section}
+{revision_note}
 Return ONLY the cover letter text, no preamble.
+"""
+
+CRITIQUE_PROMPT = """
+You are a blunt, experienced hiring manager reviewing a cover letter before it goes out.
+
+JOB: {title} at {company}
+
+COVER LETTER:
+{cover_letter}
+
+Score it 1-10 on: specificity to this company/role, whether it maps real
+skills/projects to real requirements (not generic claims), and whether the
+opening hook is fresh rather than templated. Be strict — a 7+ should be rare.
+
+Return ONLY valid JSON:
+{{"score": <integer 1-10>, "feedback": "<one sentence, the single biggest issue to fix, or 'none' if score >= 8>"}}
 """
 
 CV_TAILOR_PROMPT = """
@@ -95,9 +113,9 @@ DESCRIPTION (first 1200 chars): {description}
 Generate 6 likely technical interview questions for this specific role with brief answer hints for the candidate.
 
 Candidate's strongest points to weave in:
-- Live production agentic AI system (AI Resume Matcher)
-- RAG + LangChain + LangGraph experience
-- FastAPI + CI/CD deployment
+- AI Resume Matcher (FastAPI, Anthropic Claude, FAISS semantic matching)
+- RAG + LangChain experience (enterprise-rag-assistant)
+- FastAPI + CI/CD
 
 Return as JSON array:
 [
@@ -107,7 +125,17 @@ Return as JSON array:
 """
 
 
-def generate_cover_letter(title: str, company: str, location: str, description: str) -> str:
+def generate_cover_letter(
+    title: str, company: str, location: str, description: str,
+    avoid_openers: Optional[list[str]] = None, revision_note: str = "",
+) -> str:
+    avoid_openers_section = ""
+    if avoid_openers:
+        snippets = "\n".join(f"- {o[:150]}..." for o in avoid_openers)
+        avoid_openers_section = (
+            f"\nOpening hooks used in past cover letters — do NOT reuse these "
+            f"phrasings or structures, write a genuinely different opener:\n{snippets}\n"
+        )
     prompt = COVER_LETTER_PROMPT.format(
         name=CANDIDATE["name"],
         summary=CANDIDATE["summary"],
@@ -119,11 +147,29 @@ def generate_cover_letter(title: str, company: str, location: str, description: 
         company=company,
         location=location,
         description=description[:2000],
+        avoid_openers_section=avoid_openers_section,
+        revision_note=revision_note,
     )
     try:
         return _get_model().generate_content(prompt).text.strip()
     except Exception as e:
         return f"Error generating cover letter: {e}"
+
+
+def critique_cover_letter(cover_letter: str, title: str, company: str) -> tuple[int, str]:
+    """Returns (score, feedback). Used by the critic node in the graph to
+    decide whether write_cover_letter should revise."""
+    prompt = CRITIQUE_PROMPT.format(title=title, company=company, cover_letter=cover_letter)
+    try:
+        text = _get_model().generate_content(prompt).text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        data = json.loads(text.strip())
+        return int(data.get("score", 7)), data.get("feedback", "")
+    except Exception:
+        return 7, ""
 
 
 def generate_cv_notes(title: str, company: str, description: str) -> dict:
