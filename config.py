@@ -9,11 +9,13 @@ CANDIDATE = {
     "availability": "Part-time until Sep 2026. Full-time from Oct 2026.",
 
     "summary": (
-        "AI Engineer completing an MSc in Artificial Intelligence & Robotics at the University "
-        "of Hertfordshire (Sep 2026). Built an AI Resume Matcher (FastAPI, Anthropic Claude, "
-        "FAISS semantic matching) and this AI Job Finder Bot (Gemini-powered match scoring, "
-        "cover-letter generation, real UK sponsor-register checks). Background in enterprise "
-        "digital delivery at Deloitte Digital."
+        "Independent AI Consultant with a professional background as a Senior Consultant at "
+        "Deloitte Digital, delivering enterprise digital platforms. Currently building AI Business "
+        "Automation Hub, a multi-agent LangGraph SaaS platform for SME workflow automation, "
+        "alongside an AI Resume Matcher (FastAPI, Anthropic Claude, FAISS) and this AI Job Finder "
+        "Bot (LangGraph orchestration, Gemini-powered scoring, real UK sponsor-register checks). "
+        "Completing an MSc in Artificial Intelligence & Robotics at the University of Hertfordshire "
+        "(Sep 2026)."
     ),
 
     "skills": [
@@ -26,11 +28,17 @@ CANDIDATE = {
     ],
 
     "experience": [
+        "Independent AI Consultant (Sep 2026 – present) — building AI Business Automation Hub, "
+        "a SaaS platform for SME workflow automation with multi-agent LangGraph orchestration "
+        "(supervisor + specialist agents, RAG-backed knowledge base, n8n integration)",
         "Senior Consultant at Deloitte Digital (Jun 2024 – Sep 2025) — enterprise digital platforms",
         "Front-End Engineer at PinkLemonade (Nov 2021 – Jul 2023)",
     ],
 
     "projects": [
+        "AI Business Automation Hub: multi-agent SaaS platform for SME workflow automation — "
+        "LangGraph supervisor routing to specialist agents, RAG-backed knowledge base, n8n "
+        "integration, FastAPI + Next.js",
         "AI Resume Matcher: FastAPI service matching resumes to job descriptions using FAISS "
         "semantic similarity + Anthropic Claude for skills-gap analysis",
         "AI Job Finder Bot: this project — multi-source job search, Gemini-based match scoring, "
