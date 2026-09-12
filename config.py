@@ -33,6 +33,7 @@ CANDIDATE = {
         "(supervisor + specialist agents, RAG-backed knowledge base, n8n integration)",
         "Senior Consultant at Deloitte Digital (Jun 2024 – Sep 2025) — enterprise digital platforms",
         "Front-End Engineer at PinkLemonade (Nov 2021 – Jul 2023)",
+        "Independent IT Consultant, sole trader (2018 – 2021) — general IT/software consulting",
     ],
 
     "projects": [
