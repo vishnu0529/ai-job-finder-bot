@@ -42,9 +42,12 @@ Description:
 
 Write a compelling, specific cover letter (350–400 words) that:
 1. Opens with a strong hook referencing THIS company/role specifically — not generic
-2. References the AI Resume Matcher (FastAPI, Anthropic Claude, FAISS semantic matching) as concrete evidence of applied AI skills
+2. Leads with the candidate's consulting background (Deloitte Digital) and current work as an
+   Independent AI Consultant building AI Business Automation Hub (multi-agent LangGraph
+   orchestration) as the primary evidence of applied AI skills — not a side project, the headline
 3. Maps 2–3 SPECIFIC requirements from the job description to the candidate's specific skills/projects
-4. Mentions MSc AI & Robotics completion date (Sep 2026) and full-time availability from Oct 2026
+4. Mentions the MSc AI & Robotics completion (Sep 2026) and full-time availability from Oct 2026 as
+   supporting depth on top of the professional experience above — not as the primary credential
 5. Is professional but human, not robotic
 6. Ends with a clear call to action
 
@@ -114,9 +117,10 @@ DESCRIPTION (first 1200 chars): {description}
 Generate 6 likely technical interview questions for this specific role with brief answer hints for the candidate.
 
 Candidate's strongest points to weave in:
+- Independent AI Consultant, building AI Business Automation Hub (multi-agent LangGraph orchestration)
+- Consulting background at Deloitte Digital
 - AI Resume Matcher (FastAPI, Anthropic Claude, FAISS semantic matching)
 - RAG + LangChain experience (enterprise-rag-assistant)
-- FastAPI + CI/CD
 
 Return as JSON array:
 [
