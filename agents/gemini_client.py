@@ -24,6 +24,20 @@ _MIN_INTERVAL_SECONDS = 18
 _last_request_time = 0.0
 
 
+class GeminiQuotaExceeded(Exception):
+    """Raised when the Gemini free-tier daily request quota (not just a
+    per-minute burst limit) is exhausted. Distinct from other errors so
+    callers can show a clean, expected message instead of dumping the raw
+    Google API error text (which includes internal quota-metric IDs) into
+    the UI — important on the live public deployment."""
+
+    def __init__(self):
+        super().__init__(
+            "Daily AI quota reached for this demo — please try again tomorrow, "
+            "or see the GitHub repo for the full write-up."
+        )
+
+
 def _throttle():
     global _last_request_time
     elapsed = time.time() - _last_request_time
@@ -41,4 +55,7 @@ def generate_with_retry(model, prompt: str):
         # reliably clear this key's limit, so hammering it with more
         # retries would just waste time rather than actually help.
         time.sleep(_MIN_INTERVAL_SECONDS)
-        return model.generate_content(prompt)
+        try:
+            return model.generate_content(prompt)
+        except ResourceExhausted:
+            raise GeminiQuotaExceeded()

@@ -216,14 +216,17 @@ with tab_search:
 
     selected_sources = st.multiselect("Sources", sources_enabled, default=sources_enabled)
     score_jobs_toggle = st.toggle("AI-score each job (uses Gemini API — slower but ranks results)", value=True)
-    score_cap = 15
+    score_cap = 5
     if score_jobs_toggle:
         score_cap = st.number_input(
             "Max jobs to AI-score per search",
-            min_value=1, max_value=100, value=15, step=1,
+            min_value=1, max_value=100, value=5, step=1,
             help="Caps Gemini API usage per search — the free tier's daily quota "
-                 "is easy to exhaust scoring every result. Jobs beyond this cap "
-                 "are still saved, just unscored.",
+                 "(20 requests/day) is easy to exhaust scoring every result, "
+                 "especially once you also generate cover letters, which use "
+                 "several more requests each. Jobs beyond this cap are still "
+                 "saved, just unscored — raise this if you've enabled billing "
+                 "on your Google AI project.",
         )
 
     if st.button("🚀 Search Jobs", type="primary", use_container_width=True):

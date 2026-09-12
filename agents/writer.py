@@ -2,7 +2,7 @@ import os
 import json
 from typing import Optional
 import google.generativeai as genai
-from agents.gemini_client import generate_with_retry
+from agents.gemini_client import GeminiQuotaExceeded, generate_with_retry
 from config import CANDIDATE
 
 _model = None
@@ -153,8 +153,10 @@ def generate_cover_letter(
     )
     try:
         return generate_with_retry(_get_model(), prompt).text.strip()
+    except GeminiQuotaExceeded as e:
+        return str(e)
     except Exception as e:
-        return f"Error generating cover letter: {e}"
+        return f"Error generating cover letter ({type(e).__name__}) — please try again"
 
 
 def critique_cover_letter(cover_letter: str, title: str, company: str) -> tuple[int, str]:
@@ -200,8 +202,10 @@ def generate_follow_up_email(title: str, company: str, applied_date: str) -> str
     )
     try:
         return generate_with_retry(_get_model(), prompt).text.strip()
+    except GeminiQuotaExceeded as e:
+        return str(e)
     except Exception as e:
-        return f"Error generating follow-up email: {e}"
+        return f"Error generating follow-up email ({type(e).__name__}) — please try again"
 
 
 def generate_interview_prep(title: str, company: str, description: str) -> list[dict]:
