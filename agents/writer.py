@@ -2,6 +2,7 @@ import os
 import json
 from typing import Optional
 import google.generativeai as genai
+from agents.gemini_client import generate_with_retry
 from config import CANDIDATE
 
 _model = None
@@ -151,7 +152,7 @@ def generate_cover_letter(
         revision_note=revision_note,
     )
     try:
-        return _get_model().generate_content(prompt).text.strip()
+        return generate_with_retry(_get_model(), prompt).text.strip()
     except Exception as e:
         return f"Error generating cover letter: {e}"
 
@@ -161,7 +162,7 @@ def critique_cover_letter(cover_letter: str, title: str, company: str) -> tuple[
     decide whether write_cover_letter should revise."""
     prompt = CRITIQUE_PROMPT.format(title=title, company=company, cover_letter=cover_letter)
     try:
-        text = _get_model().generate_content(prompt).text.strip()
+        text = generate_with_retry(_get_model(), prompt).text.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -180,7 +181,7 @@ def generate_cv_notes(title: str, company: str, description: str) -> dict:
         skills=", ".join(CANDIDATE["skills"]),
     )
     try:
-        text = _get_model().generate_content(prompt).text.strip()
+        text = generate_with_retry(_get_model(), prompt).text.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -198,7 +199,7 @@ def generate_follow_up_email(title: str, company: str, applied_date: str) -> str
         applied_date=applied_date,
     )
     try:
-        return _get_model().generate_content(prompt).text.strip()
+        return generate_with_retry(_get_model(), prompt).text.strip()
     except Exception as e:
         return f"Error generating follow-up email: {e}"
 
@@ -210,7 +211,7 @@ def generate_interview_prep(title: str, company: str, description: str) -> list[
         description=description[:1200],
     )
     try:
-        text = _get_model().generate_content(prompt).text.strip()
+        text = generate_with_retry(_get_model(), prompt).text.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
