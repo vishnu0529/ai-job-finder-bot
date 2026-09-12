@@ -119,7 +119,7 @@ Generate 6 likely technical interview questions for this specific role with brie
 Candidate's strongest points to weave in:
 - Independent AI Consultant, building AI Business Automation Hub (multi-agent LangGraph orchestration)
 - Consulting background at Deloitte Digital
-- AI Resume Matcher (FastAPI, Anthropic Claude, FAISS semantic matching)
+- AI Resume Matcher (FastAPI, 4-step agentic LLM chain with Gemini/Claude)
 - RAG + LangChain experience (enterprise-rag-assistant)
 
 Return as JSON array:

@@ -12,7 +12,7 @@ CANDIDATE = {
         "Independent AI Consultant with a professional background as a Senior Consultant at "
         "Deloitte Digital, delivering enterprise digital platforms. Currently building AI Business "
         "Automation Hub, a multi-agent LangGraph SaaS platform for SME workflow automation, "
-        "alongside an AI Resume Matcher (FastAPI, Anthropic Claude, FAISS) and this AI Job Finder "
+        "alongside an AI Resume Matcher (FastAPI, 4-step agentic LLM pipeline) and this AI Job Finder "
         "Bot (LangGraph orchestration, Gemini-powered scoring, real UK sponsor-register checks). "
         "Completing an MSc in Artificial Intelligence & Robotics at the University of Hertfordshire "
         "(Sep 2026)."
@@ -39,8 +39,8 @@ CANDIDATE = {
         "AI Business Automation Hub: multi-agent SaaS platform for SME workflow automation — "
         "LangGraph supervisor routing to specialist agents, RAG-backed knowledge base, n8n "
         "integration, FastAPI + Next.js",
-        "AI Resume Matcher: FastAPI service matching resumes to job descriptions using FAISS "
-        "semantic similarity + Anthropic Claude for skills-gap analysis",
+        "AI Resume Matcher: FastAPI service running a 4-step agentic LLM chain (skill extraction "
+        "→ gap scoring → content generation → strategy) using Gemini/Claude for resume-to-JD analysis",
         "AI Job Finder Bot: this project — multi-source job search, Gemini-based match scoring, "
         "automated cover letters, real UK sponsor-register checks",
         "Sports AI Prediction API: FastAPI service using OpenAI for natural-language sports "

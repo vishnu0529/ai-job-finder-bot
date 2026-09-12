@@ -353,7 +353,7 @@ This project is one of several AI engineering projects I've built publicly:
 
 | Project | Description | Stack |
 |---|---|---|
-| **[AI Resume Matcher](https://github.com/vishnu0529/ai-resume-matcher)** | Resume/JD matching via semantic similarity + LLM skills-gap analysis | Anthropic Claude · FastAPI · FAISS · Streamlit |
+| **[AI Resume Matcher](https://github.com/vishnu0529/ai-resume-matcher)** | 4-step agentic LLM chain: skill extraction → gap scoring → content generation → strategy | Gemini/Claude · FastAPI · Streamlit |
 | **[AI Job Finder Bot](https://github.com/vishnu0529/ai-job-finder-bot)** | This project | Gemini · Streamlit · Reed API · SQLite |
 | **[Enterprise RAG Assistant](https://github.com/vishnu0529/enterprise-rag-assistant)** | Production-style RAG with cited chat + faithfulness/relevancy/precision/recall eval | LangChain · Qdrant · FastAPI |
 | **[Employee Sentiment Analysis](https://github.com/vishnu0529/Employee-Sentiment-Analysis)** | End-to-end NLP pipeline on 2,200 employee emails | BERT · VADER · scikit-learn · pandas |
